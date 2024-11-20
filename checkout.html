@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Checkout</title>
+  <style>
+    .checkout-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .order-summary {
+      background: #f9f9f9;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .order-item {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .order-total {
+      font-size: 1.2em;
+      font-weight: bold;
+      text-align: right;
+      padding: 20px 0;
+    }
+
+    .checkout-form {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .submit-button {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1.1em;
+      width: 100%;
+    }
+
+    .submit-button:hover {
+      background-color: #218838;
+    }
+
+    .error-message {
+      color: #dc3545;
+      margin-top: 5px;
+      font-size: 0.9em;
+    }
+
+    nav {
+      padding: 15px;
+      background-color: #333;
+      color: white;
+      margin-bottom: 20px;
+    }
+
+    nav a {
+      color: white;
+      text-decoration: none;
+      margin-right: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <nav>
+    <a href="index.html">Products</a>
+    <a href="cart.html">Cart</a>
+  </nav>
+
+  <div class="checkout-container">
+    <h1>Checkout</h1>
+
+    <div class="order-summary">
+      <h2>Order Summary</h2>
+      <div id="order-items"></div>
+      <div class="order-total">
+        Total: $<span id="order-total">0.00</span>
+      </div>
+    </div>
+
+    <form id="checkout-form" class="checkout-form">
+      <h2>Shipping Information</h2>
+      <div class="form-group">
+        <label for="name">Full Name:</label>
+        <input type="text" id="name" required />
+      </div>
+      <div class="form-group">
+        <label for="email">Email:</label>
+        <input type="email" id="email" required />
+      </div>
+      <div class="form-group">
+        <label for="phone">Phone:</label>
+        <input type="tel" id="phone" required />
+      </div>
+      <div class="form-group">
+        <label for="address">Address:</label>
+        <input type="text" id="address" required />
+      </div>
+      <div class="form-group">
+        <label for="city">City:</label>
+        <input type="text" id="city" required />
+      </div>
+      <div class="form-group">
+        <label for="postal-code">Postal Code:</label>
+        <input type="text" id="postal-code" required />
+      </div>
+
+      <button type="submit" class="submit-button">Place Order</button>
+    </form>
+  </div>
+
+  <script>
+    const API_URL = "http://localhost:3000/api";
+
+    function displayOrderSummary() {
+      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+
+      if (cart.length === 0) {
+        window.location.href = "cart.html";
+        return;
+      }
+
+      const orderItemsContainer = document.getElementById("order-items");
+      let html = "";
+      let total = 0;
+
+      cart.forEach((item) => {
+        const itemTotal = item.product.price * item.quantity;
+        total += itemTotal;
+
+        html += `
+                <div class="order-item">
+                    <div>${item.product.name}</div>
+                    <div>${item.quantity} × $${item.product.price.toFixed(2)}</div>
+                    <div>$${itemTotal.toFixed(2)}</div>
+                </div>
+                `;
+      });
+
+      orderItemsContainer.innerHTML = html;
+      document.getElementById("order-total").textContent = total.toFixed(2);
+    }
+
+    async function submitOrder(event) {
+      event.preventDefault();
+
+      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+      if (cart.length === 0) return;
+
+      const orderData = {
+        customerName: document.getElementById("name").value,
+        email: document.getElementById("email").value,
+        phone: document.getElementById("phone").value,
+        address: document.getElementById("address").value,
+        city: document.getElementById("city").value,
+        postalCode: document.getElementById("postal-code").value,
+        items: cart.map((item) => ({
+          product: item.product._id,
+          quantity: item.quantity
+        })),
+        totalAmount: cart.reduce(
+          (sum, item) => sum + item.product.price * item.quantity,
+          0
+        )
+      };
+
+      try {
+        const response = await fetch(`${API_URL}/orders`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(orderData)
+        });
+
+        if (response.ok) {
+          localStorage.removeItem("cart");
+          alert("Order placed successfully!");
+          window.location.href = "index.html";
+        } else {
+          throw new Error("Failed to place order");
+        }
+      } catch (error) {
+        console.error("Error placing order:", error);
+        alert("Failed to place order. Please try again.");
+      }
+    }
+
+    document
+      .getElementById("checkout-form")
+      .addEventListener("submit", submitOrder);
+    document.addEventListener("DOMContentLoaded", displayOrderSummary);
+  </script>
+</body>
+
+</html>
